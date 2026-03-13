@@ -29,6 +29,7 @@ This repository acts as a **complete technical reference and learning guide for 
 - [17. Best Practices](#17-best-practices)
 - [18. Learning Roadmap](#18-learning-roadmap)
 - [19. Practice Exercises](#19-practice-exercises)
+- [20. ChatBot baseMessage](#-2️⃣0️⃣-basemessages-in-langgraph)
 
 ---
 
@@ -417,7 +418,7 @@ Add a human approval node before executing an API.
 ---
 
 
-# 🧪 20. BaseMessages in LangGraph
+# 🧪 2️⃣0️⃣ BaseMessages in LangGraph
 
 If you open the **basic chatbot file**, you will see a state definition similar to this:
 
