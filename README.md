@@ -29,7 +29,8 @@ This repository acts as a **complete technical reference and learning guide for 
 - [17. Best Practices](#17-best-practices)
 - [18. Learning Roadmap](#18-learning-roadmap)
 - [19. Practice Exercises](#19-practice-exercises)
-- [20. ChatBot baseMessage](#-2️⃣0️⃣-basemessages-in-langgraph)
+- [20. ChatBot baseMessage](#20-basemessages-in-langgraph)
+- [21. Persistance ](#21-Percitance-in-langgraph)
 
 ---
 
@@ -489,6 +490,354 @@ Final state example:
 ```
 
 This structure allows LangGraph to **maintain conversation memory across nodes** while keeping the implementation clean and consistent.
+
+# 2️⃣1️⃣ Persistence in LangGraph
+
+## What is Persistence in LangGraph?
+
+**Persistence** in LangGraph means **saving the state of the graph so that it can continue execution later instead of starting from the beginning**.
+
+Normally, when a graph runs, the state exists **only in memory**. If the program stops, crashes, or the server restarts, the conversation or workflow state is lost.
+
+Persistence solves this problem by **storing the graph state in external storage** such as:
+
+* Memory
+* Database
+* Redis
+* SQLite
+* File storage
+* Cloud storage
+
+When persistence is enabled, LangGraph can **resume the workflow from the exact step where it stopped**.
+
+---
+
+# Why Persistence is Important
+
+Without persistence:
+
+* If the application restarts → state is lost
+* Long running agents cannot resume
+* Multi-step workflows break
+* Conversations cannot continue
+
+With persistence:
+
+* Graph resumes execution
+* Long running agents work reliably
+* Multi-step workflows survive crashes
+* Chat history is stored
+* Human-in-the-loop workflows become possible
+
+---
+
+# Benefits of Persistence
+
+## 1. Fault Tolerance
+
+If the server crashes, the workflow **continues from the last checkpoint instead of restarting**.
+
+Example:
+
+User conversation running → server crashes → restart → graph resumes.
+
+---
+
+## 2. Long Running Agents
+
+Some AI workflows take **minutes or hours**.
+
+Persistence allows agents to:
+
+* pause
+* resume
+* continue processing later
+
+Example:
+
+AI Research Agent:
+
+1. Search internet
+2. Analyze documents
+3. Generate report
+
+If step 2 takes long time, persistence ensures progress is saved.
+
+---
+
+## 3. Human in the Loop
+
+Sometimes AI needs **human approval** before continuing.
+
+Example workflow:
+
+1. AI generates response
+2. Human reviews response
+3. Human approves
+4. Graph continues
+
+Persistence stores the state while waiting for the human.
+
+---
+
+## 4. Multi-session Conversations
+
+Persistence allows:
+
+* remembering previous messages
+* continuing conversations
+* restoring chat history
+
+Example:
+
+User chats with chatbot → leaves → comes back later → chatbot remembers context.
+
+---
+
+## 5. Debugging and Observability
+
+Persisted states help developers:
+
+* inspect graph execution
+* replay workflows
+* debug failures
+
+---
+
+# How Persistence Works in LangGraph
+
+LangGraph uses **Checkpointing** to store state.
+
+A **checkpointer** saves the graph state after each node execution.
+
+When the graph restarts, it **loads the last checkpoint** and continues execution.
+
+Workflow:
+
+User Input
+↓
+Node Execution
+↓
+Save Checkpoint
+↓
+Next Node
+
+If failure occurs:
+
+Load Checkpoint
+Resume Graph
+
+---
+
+# Types of Checkpointers
+
+LangGraph supports multiple persistence mechanisms.
+
+## 1. Memory Saver
+
+Stores state in memory.
+
+Best for:
+
+* development
+* testing
+* temporary workflows
+
+Not recommended for production.
+
+Example:
+
+```python
+from langgraph.checkpoint.memory import MemorySaver
+
+memory = MemorySaver()
+```
+
+---
+
+## 2. SQLite Checkpointer
+
+Stores graph state in a **SQLite database**.
+
+Good for:
+
+* small applications
+* local development
+* persistent storage
+
+Example:
+
+```python
+from langgraph.checkpoint.sqlite import SqliteSaver
+
+checkpointer = SqliteSaver.from_conn_string("sqlite:///checkpoint.db")
+```
+
+---
+
+## 3. Redis Checkpointer
+
+Stores state in **Redis**.
+
+Good for:
+
+* distributed systems
+* scalable applications
+* multi-user agents
+
+Example:
+
+```python
+from langgraph.checkpoint.redis import RedisSaver
+
+checkpointer = RedisSaver.from_conn_string("redis://localhost:6379")
+```
+
+---
+
+# Basic Persistence Example
+
+Example chatbot with persistence.
+
+```python
+from langgraph.graph import StateGraph
+from langgraph.checkpoint.memory import MemorySaver
+from typing import TypedDict
+
+class ChatState(TypedDict):
+    messages: list
+
+def chatbot(state: ChatState):
+    messages = state["messages"]
+    last_message = messages[-1]
+
+    response = f"Echo: {last_message}"
+
+    messages.append(response)
+
+    return {"messages": messages}
+
+
+builder = StateGraph(ChatState)
+
+builder.add_node("chatbot", chatbot)
+
+builder.set_entry_point("chatbot")
+builder.set_finish_point("chatbot")
+
+memory = MemorySaver()
+
+graph = builder.compile(checkpointer=memory)
+
+config = {"configurable": {"thread_id": "user1"}}
+
+result = graph.invoke(
+    {"messages": ["Hello"]},
+    config=config
+)
+
+print(result)
+```
+
+---
+
+# Understanding `thread_id`
+
+Persistence requires a **thread ID**.
+
+Thread ID identifies **a unique conversation or workflow session**.
+
+Example:
+
+thread_id = user_1
+thread_id = user_2
+thread_id = order_workflow_123
+
+LangGraph uses this ID to **load the correct saved state**.
+
+Example config:
+
+```python
+config = {
+    "configurable": {
+        "thread_id": "conversation_1"
+    }
+}
+```
+
+---
+
+# Example Workflow with Persistence
+
+Without persistence:
+
+User → Node1 → Node2 → Node3
+Crash occurs
+Workflow restarts from Node1
+
+With persistence:
+
+User → Node1 → Node2 → (Checkpoint Saved)
+
+Crash occurs
+
+Restart
+Resume from Node2
+Continue → Node3
+
+---
+
+# Real World Example
+
+Customer Support AI Workflow
+
+User Message
+↓
+Intent Detection
+↓
+Search Knowledge Base
+↓
+Generate Answer
+↓
+Human Approval
+↓
+Send Response
+
+Persistence ensures:
+
+* workflow survives restarts
+* approval waiting state is saved
+* conversation history persists
+
+---
+
+# When to Use Persistence
+
+Use persistence when:
+
+* building chatbots
+* long running AI agents
+* multi-step workflows
+* human approval systems
+* production applications
+
+Avoid persistence only for:
+
+* simple scripts
+* quick experiments
+
+---
+
+# Key Takeaways
+
+* Persistence allows LangGraph to **save workflow state**
+* Graph execution can **resume after crashes**
+* Enables **long running agents**
+* Supports **human-in-the-loop workflows**
+* Uses **checkpointers** like Memory, SQLite, and Redis
+* Requires **thread_id** to identify sessions
+
+Persistence is **essential for production-grade AI agents** built with LangGraph.
 
 
 
