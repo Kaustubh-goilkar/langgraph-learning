@@ -30,8 +30,8 @@ This repository acts as a **complete technical reference and learning guide for 
 - [18. Learning Roadmap](#18-learning-roadmap)
 - [19. Practice Exercises](#19-practice-exercises)
 - [20. ChatBot baseMessage](#20-basemessages-in-langgraph)
-- [21. Persistance ](#21-Percitance-in-langgraph)
-- [22. Streaming Responses ](#22-streaming-responses-in-langgraph)
+- [21. Persistence ](#21-Persistence-in-langgraph)
+- [22. Streaming Responses](#22-streaming-responses-from-chat-model)
 
 ---
 
@@ -843,30 +843,7 @@ Persistence is **essential for production-grade AI agents** built with LangGraph
 
 # 2️⃣1️⃣ Explaining `chatbotWorkflow.stream()` – Streaming Responses from Chat Model
 
-## What is Streaming in LangGraph?
-
-**Streaming** allows the AI model to **send responses token by token instead of waiting for the full response to finish**.
-
-Normally when you call:
-
-```python
-graph.invoke()
-```
-
-the system waits until the **entire response is generated**.
-
-But with **streaming**, the model sends the response **incrementally**, similar to how ChatGPT types answers in real time.
-
-This is useful for:
-
-* Better user experience
-* Faster response display
-* Real-time AI interaction
-* Live chat interfaces
-
----
-
-# Understanding the Streaming Code
+## Understanding the Streaming Code
 
 Example code:
 
@@ -881,42 +858,52 @@ for message_chunks, metadata in chatbotWorkflow.stream(
         print("AI : ", AI_Response)
 ```
 
-Let’s break this down step by step.
+Below is the explanation of each part of this code.
 
 ---
 
-# 1️⃣ `chatbotWorkflow.stream()`
+## 🔹 `chatbotWorkflow.stream()`
 
-This function **runs the LangGraph workflow while streaming outputs**.
+### Sub Points
 
-Instead of returning a final result, it **yields partial outputs as they are generated**.
+* Runs the **LangGraph workflow**
+* Streams the response **token by token**
+* Does **not wait for the full response**
+* Returns an **iterator that yields partial outputs**
 
-Syntax:
+### Syntax
 
 ```python
 graph.stream(input, config=config, stream_mode="messages")
 ```
 
-Parameters:
+### Parameters
 
-* **input** → graph input state
+* **input** → state input sent to the graph
 * **config** → runtime configuration (thread id, persistence, etc.)
-* **stream_mode** → defines what is streamed
+* **stream_mode** → determines what data is streamed from the graph
 
 ---
 
-# 2️⃣ Input to the Graph
+## 🔹 Input to the Graph
 
 ```python
 {'messages':[HumanMessage(user_message)]}
 ```
 
-This is the **state input** sent to the graph.
+### Sub Points
 
-Example:
+* Represents the **initial state of the graph**
+* Contains the **user message**
+* Sent to the chatbot node for processing
+* Stored inside the graph state
+
+### Example
+
+User message:
 
 ```
-User Message → "What is LangGraph?"
+What is LangGraph?
 ```
 
 Converted into:
@@ -929,67 +916,72 @@ Converted into:
 }
 ```
 
-This message is passed to the chatbot node.
+### Why Messages Are Used
+
+* LangGraph chatbots store conversation history in
+  `state["messages"]`
+* This allows the model to **remember previous messages**
 
 ---
 
-# 3️⃣ `stream_mode="messages"`
+## 🔹 `stream_mode="messages"`
 
-LangGraph supports multiple streaming modes.
+### Sub Points
 
-Here we use:
+* Defines **what part of the workflow should be streamed**
+* In this mode, LangGraph streams **AI message tokens**
+* Each iteration returns **partial message chunks**
+* Useful for building **real-time AI chat interfaces**
 
-```
-stream_mode="messages"
-```
-
-This means the graph will **stream AI messages token by token**.
-
-Example stream output:
+### Example Streaming Output
 
 ```
 Hello
 Hello there
 Hello there! How
 Hello there! How can
-Hello there! How can I
 Hello there! How can I help
 ```
 
-Each iteration sends **partial message chunks**.
+Each iteration produces a **new chunk of the AI response**.
 
 ---
 
-# 4️⃣ The Streaming Loop
+## 🔹 Streaming Loop
 
 ```python
 for message_chunks, metadata in chatbotWorkflow.stream(...)
 ```
 
-The `stream()` method returns an **iterator**.
+### Sub Points
 
-Each iteration returns:
+* `stream()` returns an **iterator**
+* The loop processes **each streamed output**
+* Every iteration returns two values
 
-```
-(message_chunk, metadata)
-```
+### Returned Values
 
-Where:
-
-| Variable       | Meaning                          |
-| -------------- | -------------------------------- |
-| message_chunks | partial AI response              |
-| metadata       | information about node execution |
+| Variable         | Description                                |
+| ---------------- | ------------------------------------------ |
+| `message_chunks` | Partial AI message content                 |
+| `metadata`       | Information about the graph node execution |
 
 ---
 
-# 5️⃣ `message_chunks.content`
+## 🔹 `message_chunks.content`
 
 ```python
 if message_chunks.content:
 ```
 
-Each streamed chunk contains:
+### Sub Points
+
+* Each chunk contains **partial text generated by the LLM**
+* `content` stores the **actual token text**
+* Some chunks may contain metadata without text
+* The condition ensures **only text tokens are processed**
+
+### Example Chunk Object
 
 ```
 AIMessageChunk(
@@ -997,31 +989,21 @@ AIMessageChunk(
 )
 ```
 
-`content` holds the **text token generated by the LLM**.
-
-Example stream:
-
-```
-"H"
-"He"
-"Hel"
-"Hell"
-"Hello"
-```
-
-Your code collects these tokens.
-
 ---
 
-# 6️⃣ Building the Full Response
+## 🔹 Building the Full Response
 
 ```python
 AI_Response += message_chunks.content
 ```
 
-Each token is appended to the response.
+### Sub Points
 
-Example:
+* Each streamed token is **appended to the response**
+* The response gradually **grows with each chunk**
+* Reconstructs the **complete AI response**
+
+### Example
 
 | Stream Token | AI_Response |
 | ------------ | ----------- |
@@ -1029,17 +1011,21 @@ Example:
 | "lo"         | Hello       |
 | " there"     | Hello there |
 
-The response gradually grows.
-
 ---
 
-# 7️⃣ Printing the Response in Real Time
+## 🔹 Printing the Response
 
 ```python
 print("AI : ", AI_Response)
 ```
 
-Output example:
+### Sub Points
+
+* Displays the **current accumulated response**
+* Runs **after every token chunk**
+* Creates a **typing effect in the terminal**
+
+### Example Output
 
 ```
 AI : H
@@ -1048,137 +1034,55 @@ AI : Hel
 AI : Hell
 AI : Hello
 AI : Hello there
-AI : Hello there! How
 AI : Hello there! How can I help you?
 ```
 
-This creates a **typing effect**.
+---
+
+## 🔹 Why Streaming is Useful
+
+### Sub Points
+
+* Improves **user experience**
+* AI responses appear **instantly**
+* Works well for **long responses**
+* Enables **interactive chat interfaces**
+* Used in **AI chat applications and assistants**
 
 ---
 
-# Complete Streaming Example
-
-```python
-from langchain_core.messages import HumanMessage
-
-AI_Response = ""
-
-for message_chunks, metadata in chatbotWorkflow.stream(
-    {"messages": [HumanMessage(user_message)]},
-    config=config,
-    stream_mode="messages"
-):
-
-    if message_chunks.content:
-        AI_Response += message_chunks.content
-        print("AI:", AI_Response)
-```
-
----
-
-# Visual Flow of Streaming
-
-```
-User Input
-     │
-     ▼
-LangGraph Workflow
-     │
-     ▼
-LLM Generates Tokens
-     │
-     ▼
-Token Stream
-     │
-     ├── "Hello"
-     ├── "Hello there"
-     ├── "Hello there! How"
-     └── "Hello there! How can I help?"
-     │
-     ▼
-User Sees Live Response
-```
-
----
-
-# Why Streaming is Useful
-
-## 1. Faster Perceived Response
-
-Instead of waiting:
-
-```
-User → wait 5 seconds → full answer
-```
-
-User sees:
-
-```
-User → AI starts typing immediately
-```
-
----
-
-## 2. Better User Experience
-
-Streaming creates **real-time AI interaction**, similar to ChatGPT.
-
----
-
-## 3. Useful for Long Responses
-
-Large outputs like:
-
-* reports
-* summaries
-* explanations
-
-can appear **gradually**.
-
----
-
-# Difference Between `invoke()` and `stream()`
+## 🔹 Difference Between `invoke()` and `stream()`
 
 | Method     | Behavior                        |
 | ---------- | ------------------------------- |
-| `invoke()` | waits for full response         |
+| `invoke()` | waits for the full response     |
 | `stream()` | returns response chunk by chunk |
 
-Example:
+### Example
 
 ```
-invoke() → "Full answer returned"
+invoke()
+→ Full answer returned at once
+```
 
-stream() →
-"H"
-"He"
-"Hel"
-"Hello"
+```
+stream()
+→ H
+→ He
+→ Hel
+→ Hello
 ```
 
 ---
 
-# Real World Use Case
+## 🔹 Key Takeaways
 
-Streaming is commonly used in:
+* `stream()` enables **real-time AI response streaming**
+* Responses are generated **token by token**
+* `message_chunks.content` contains **partial AI text**
+* The loop reconstructs the **full response gradually**
+* Used for **real-time AI chat systems**
 
-* AI chat applications
-* Websocket chat systems
-* Terminal AI assistants
-* Voice assistants
-* Live coding assistants
-
----
-
-# Key Takeaways
-
-* `stream()` enables **real-time token streaming**
-* Returns **partial AI message chunks**
-* `message_chunks.content` contains the generated token
-* Response is built **incrementally**
-* Creates **live typing AI experience**
-
-Streaming is essential for **interactive AI chat applications built with LangGraph**.
 
 
 # 🎯 Final Takeaway
