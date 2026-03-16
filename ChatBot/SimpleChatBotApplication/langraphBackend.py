@@ -44,21 +44,3 @@ graph.add_edge('chat_bot',END)
 
 # compile graph
 chatBotWorkflow = graph.compile(checkpointer=checkpoint)
-# result = chatBotWorkflow.invoke({'messages':[HumanMessage('Hi how are you')]})
-
-while True:
-    user_message = input("Type here : ")
-    if user_message.strip().lower() in ['exit','quit','by']:
-        break
-
-    config = { 'configurable':{'thread_id': '1'} }
-    # result = chatBotWorkflow.invoke({'messages':[HumanMessage(user_message)]},config=config)
-    # print("AI : ", result['messages'][-1].content)
-
-    # Streamming Respone
-    # AI_Response = ""
-    # for message_chunks, metadata in chatBotWorkflow.stream({'messages':[HumanMessage(user_message)]},config=config,stream_mode='messages'):
-    #     if message_chunks.content:
-    #         AI_Response += message_chunks.content
-    #         print("AI : ", AI_Response)
-
